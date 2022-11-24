@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
--
+- Switch to non-installation docs due to pyrfc errors (missing dependencies) on readthedocs
 
 ### Changed
 
