@@ -8,14 +8,15 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
+import configparser
 import datetime
 import os
 import sys
 
-try:
-    from importlib_metadata import distribution
-except ImportError:
-    from importlib.metadata import distribution
+# try:
+#    from importlib_metadata import distribution
+# except ImportError:
+#    from importlib.metadata import distribution
 
 
 try:
@@ -33,7 +34,7 @@ addtl_paths = (
 for addtl_path in addtl_paths:
     sys.path.insert(0, os.path.abspath(os.path.join(docs_basepath, addtl_path)))
 
-dist = distribution("saltext.sap_nwabap")
+# dist = distribution("saltext.sap_nwabap")
 
 
 # -- Project information -----------------------------------------------------
@@ -42,12 +43,26 @@ if this_year == 2021:
     copyright_year = 2021
 else:
     copyright_year = f"2021 - {this_year}"
-project = dist.metadata["Summary"]
-author = dist.metadata["Author"]
+
+config = configparser.ConfigParser()
+config.read(Path(__file__).resolve().parents[1] / "setup.cfg")
+project = config["metadata"]["description"]
+author = config["metadata"]["author"]
+# project = dist.metadata["Summary"]
+# author = dist.metadata["Author"]
 copyright = f"{copyright_year}, {author}"
 
 # The full version, including alpha/beta/rc tags
-release = dist.version
+# release = dist.version
+version_path = Path(__file__).resolve().parents[1] / "src" / "saltext" / "sap_nwabap" / "version.py"
+with version_path.open() as f:
+    for line in f:
+        if line.startswith("__version__"):
+            # We only want the bare string pls
+            line = line.partition("=")[-1].strip()
+            line = line.partition("#")[0].strip()
+            release = line.strip('"').strip("'")
+            break
 
 
 # Variables to pass into the docs from sitevars.rst for rst substitution
