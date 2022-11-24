@@ -2028,7 +2028,7 @@ def pse_uploaded(
             }
 
             log.debug("Reading PSE information from file")
-            result = __salt__["sap_genpse.get_my_name"](
+            result = __salt__["sap_pse.get_my_name"](
                 pse_file=name,
                 pse_pwd=pin,
                 runas=pse_owner,
