@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
--
+- Added additional information on how to integrate pyrfc into the Salt minion
 
 ### Fixed
 

@@ -1,5 +1,5 @@
 # SaltStack SAP NetWeaver AS ABAP extension
-This SaltStack extensions allows managing SAP NetWeaver AS ABAP systems over ``pyrfc`` resp. the SAP NW RFC SDK.
+This SaltStack extensions allows managing SAP NetWeaver AS ABAP systems over `pyrfc` resp. the SAP NW RFC SDK.
 
 **THIS PROJECT IS NOT ASSOCIATED WITH SAP IN ANY WAY**
 
@@ -8,8 +8,16 @@ Run the following to install the SaltStack SAP NetWeaver AS ABAP extention:
 ```bash
 salt-call pip.install saltext.sap-nwabap
 ```
-Note that this will install ``pyrfc`` as a dependency which requires the correct setup of the SAP NW RFC SDK as a
+Note that this will install `pyrfc` as a dependency which requires the correct setup of the SAP NW RFC SDK as a
 prerequisite. See https://github.com/SAP/PyRFC for more information.
+
+In order to fulfill the shared library dependencies, the `salt-minion` requires to have the necessary environment
+variables `LD_LIBRARY_PATH` and `SAPNWRFC_HOME` set. This can be achieved by modifying the systemd service of the
+`salt-minion` (this can also be used for the installation of `pyrfc`).
+
+_Note_: Due to the implementation of `salt-call`, environment variables set in the systemd service of the salt minion
+are not recognized. Either use the CLI tool `salt` or [`pepper`](https://github.com/saltstack/pepper) or set the
+environment variables prior to the execution on the local shell.
 
 Keep in mind that this package must be installed on every minion that should utilize the states and execution modules.
 
