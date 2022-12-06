@@ -3894,3 +3894,407 @@ def system_health_ok(
         ret["comment"] = "System health OK"
         ret["result"] = True
     return ret
+
+
+def note_uploaded(
+    name,
+    note_number,
+    sid,
+    client,
+    message_server_host,
+    message_server_port,
+    logon_group,
+    username,
+    password,
+):
+    """
+    Upload an SAP note.
+
+    name
+        Full path to the SAP Note. Must be accessible by the SAP system.
+    note_number
+        Number of the note, e.g. 2848498
+    sid
+        SID of the SAP system.
+    message_server_host
+        Host of the message server.
+    message_server_port
+        Port of the message server.
+    client
+        Client to connect to.
+    logon_group
+        Logon group to use.
+    username
+        Username to use for the connection.
+    password
+        Password to use for the connection.
+
+    .. note::
+        Because there are no checks, the Note will always be uploaded.
+
+    Example:
+
+    .. code-block:: jinja
+
+        SAP Note 2848498 is uploaded to S4H:
+          sap_nwabap.note_uploaded:
+            - name: /mnt/nfs/notes/SAP_NOTE_2848498.txt
+            - note_number: 2848498
+            - sid: S4H
+            - client: "000"
+            - message_server_host: s4h
+            - message_server_port: 3600
+            - logon_group: SPACE
+            - username: SALT
+            - password: __slot__:salt:vault.read_secret(path="nwabap/S4H/000", key="SALT")
+    """
+    log.debug("Running function")
+    ret = {"name": name, "changes": {"old": [], "new": []}, "comment": "", "result": False}
+    if isinstance(client, int):
+        client = f"{client:03d}"
+    abap_connection = {
+        "mshost": message_server_host,
+        "msserv": str(message_server_port),
+        "sysid": sid,
+        "group": logon_group,
+        "client": client,
+        "user": username,
+        "passwd": password,
+        "lang": "EN",
+    }
+    with Connection(**abap_connection) as conn:
+        if __opts__["test"]:
+            ret["changes"]["new"].append(f"Would have uploaded {name}")
+        else:
+            function_modules = {
+                "SCWB_API_UPLOAD_NOTES": {"IT_FILENAME": [name], "IT_NOTES": [note_number]}
+            }
+            success, result = __salt__["sap_nwabap.call_fms"](
+                function_modules=function_modules, conn=conn
+            )
+            if not success:
+                msg = f"Could not upload {name} to {sid}"
+                log.error(msg)
+                ret["comment"] = msg
+                ret["result"] = False
+                return ret
+            if result["SCWB_API_UPLOAD_NOTES"]["EV_RC"] != 0:
+                msg = result["SCWB_API_UPLOAD_NOTES"]["ES_MSG"]["MSGTXT"]
+                log.error(msg)
+                ret["comment"] = msg
+                ret["result"] = False
+                return ret
+            ret["changes"]["new"].append(f"Uploaded {name} to {sid}")
+    ret["result"] = True if (not __opts__["test"] or not ret["changes"]) else None
+    return ret
+
+
+def note_downloaded(
+    name,
+    sid,
+    client,
+    message_server_host,
+    message_server_port,
+    logon_group,
+    username,
+    password,
+):
+    """
+    Download an SAP note directly to the SAP system
+
+    name
+        Number of the note, e.g. 2848498
+    sid
+        SID of the SAP system.
+    message_server_host
+        Host of the message server.
+    message_server_port
+        Port of the message server.
+    client
+        Client to connect to.
+    logon_group
+        Logon group to use.
+    username
+        Username to use for the connection.
+    password
+        Password to use for the connection.
+
+    .. note::
+        Because there are no checks, the Note will always be downloaded.
+
+    Example:
+
+    .. code-block:: jinja
+
+        SAP Note 2848498 is downloaded to S4H:
+          sap_nwabap.note_downloaded:
+            - name: 2848498
+            - sid: S4H
+            - client: "000"
+            - message_server_host: s4h
+            - message_server_port: 3600
+            - logon_group: SPACE
+            - username: SALT
+            - password: __slot__:salt:vault.read_secret(path="nwabap/S4H/000", key="SALT")
+    """
+    log.debug("Running function")
+    ret = {"name": name, "changes": {"old": [], "new": []}, "comment": "", "result": False}
+    if isinstance(client, int):
+        client = f"{client:03d}"
+    abap_connection = {
+        "mshost": message_server_host,
+        "msserv": str(message_server_port),
+        "sysid": sid,
+        "group": logon_group,
+        "client": client,
+        "user": username,
+        "passwd": password,
+        "lang": "EN",
+    }
+    with Connection(**abap_connection) as conn:
+        if __opts__["test"]:
+            ret["changes"]["new"].append(f"Would have dwonloaded SAP Note {name}")
+        else:
+            para = [
+                {"PARA_NAME": "P_NOTENR", "PARA_VALUE": name},
+                {"PARA_NAME": "P_CLSFY", "PARA_VALUE": False},
+            ]
+            success, _ = __salt__["sap_nwabap.call_fms"](
+                function_modules={
+                    "INST_EXECUTE_REPORT": {"PROGRAM": "SCWN_NOTE_DOWNLOAD", "PARA": para}
+                },
+                conn=conn,
+            )
+            if not success:
+                msg = "Could not execute INST_EXECUTE_REPORT with program SCWN_NOTE_DOWNLOAD"
+                log.error(msg)
+                ret["comment"] = msg
+                ret["result"] = False
+                return ret
+    ret["result"] = True if (not __opts__["test"] or not ret["changes"]) else None
+    return ret
+
+
+def note_implemented(
+    name,
+    sid,
+    client,
+    message_server_host,
+    message_server_port,
+    logon_group,
+    username,
+    password,
+    confirm_manual=False,
+):
+    """
+    Implement an SAP note.
+
+    name
+        Number of the note, e.g. 2848498
+    sid
+        SID of the SAP system.
+    message_server_host
+        Host of the message server.
+    message_server_port
+        Port of the message server.
+    client
+        Client to connect to.
+    logon_group
+        Logon group to use.
+    username
+        Username to use for the connection.
+    password
+        Password to use for the connection.
+    confirm_manual
+        Automatically confirm manual activities. Default is False.
+
+    Example:
+
+    .. code-block:: jinja
+
+        SAP Note 2848498 is implemented on S4H:
+          sap_nwabap.note_implemented:
+            - name: 2848498
+            - sid: S4H
+            - client: "000"
+            - message_server_host: s4h
+            - message_server_port: 3600
+            - logon_group: SPACE
+            - username: SALT
+            - password: __slot__:salt:vault.read_secret(path="nwabap/S4H/000", key="SALT")
+    """
+    log.debug("Running function")
+    ret = {"name": name, "changes": {"old": [], "new": []}, "comment": "", "result": False}
+    if isinstance(client, int):
+        client = f"{client:03d}"
+    abap_connection = {
+        "mshost": message_server_host,
+        "msserv": str(message_server_port),
+        "sysid": sid,
+        "group": logon_group,
+        "client": client,
+        "user": username,
+        "passwd": password,
+        "lang": "EN",
+    }
+    with Connection(**abap_connection) as conn:
+        log.debug("Retrieving list of implemented SAP Notes")
+        function_modules = {"SCWB_API_GET_NOTES_IMPLEMENTED": {}}
+        success, result = __salt__["sap_nwabap.call_fms"](
+            function_modules=function_modules, conn=conn
+        )
+        if not success:
+            msg = f"Could not retrieve list of SAP Notes from {sid}"
+            log.error(msg)
+            ret["comment"] = msg
+            ret["result"] = False
+            return ret
+        for snote_list in result["SCWB_API_GET_NOTES_IMPLEMENTED"]["ET_NOTES_IMPL"]:
+            if name in snote_list["NUMM"]:
+                ret["result"] = True
+                ret["changes"] = {}
+                ret["comment"] = "No changes required"
+                return ret
+
+        log.debug(f"Implementing SAP Note {name}")
+        if __opts__["test"]:
+            ret["changes"]["new"].append(f"Would have implemented SAP Note {name}")
+        else:
+            function_modules = {
+                "SCWB_API_NOTES_IMPLEMENT": {"IT_NOTES": [name]},
+                "SCWB_API_CINST_QUEUE_GET": {},
+            }
+            success, result = __salt__["sap_nwabap.call_fms"](
+                function_modules=function_modules, conn=conn
+            )
+            if not success:
+                msg = f"Could not implement SAP Note {name}"
+                log.error(msg)
+                ret["comment"] = msg
+                ret["result"] = False
+                return ret
+
+            if result["SCWB_API_CINST_QUEUE_GET"]["ET_MANUAL_ACTIVITIES"]:
+                if confirm_manual:
+                    function_modules = {"SCWB_API_CONFIRM_MAN_ACTIVITY": {}}
+                    success, result = __salt__["sap_nwabap.call_fms"](
+                        function_modules=function_modules, conn=conn
+                    )
+                    if not success:
+                        msg = f"Could not confirm manual activities for SAP Note {name}"
+                        log.error(msg)
+                        ret["comment"] = msg
+                        ret["result"] = False
+                        return ret
+                else:
+                    msg = f"There are manual activities for SAP Note {name}"
+                    log.error(msg)
+                    ret["comment"] = msg
+                    ret["result"] = False
+                    return ret
+            ret["comment"] = f"Implemented SAP Note {name}"
+            ret["changes"]["new"] = name
+    ret["result"] = True if (not __opts__["test"] or not ret["changes"]) else None
+    return ret
+
+
+def note_deimplemented(
+    name,
+    sid,
+    client,
+    message_server_host,
+    message_server_port,
+    logon_group,
+    username,
+    password,
+):
+    """
+    Deimplement an SAP note.
+
+    name
+        Number of the note, e.g. 2848498
+    sid
+        SID of the SAP system.
+    message_server_host
+        Host of the message server.
+    message_server_port
+        Port of the message server.
+    client
+        Client to connect to.
+    logon_group
+        Logon group to use.
+    username
+        Username to use for the connection.
+    password
+        Password to use for the connection.
+
+    Example:
+
+    .. code-block:: jinja
+
+        SAP Note 2848498 is deimplemented on S4H:
+          sap_nwabap.note_deimplemented:
+            - name: 2848498
+            - sid: S4H
+            - client: "000"
+            - message_server_host: s4h
+            - message_server_port: 3600
+            - logon_group: SPACE
+            - username: SALT
+            - password: __slot__:salt:vault.read_secret(path="nwabap/S4H/000", key="SALT")
+    """
+    log.debug("Running function")
+    ret = {"name": name, "changes": {"old": [], "new": []}, "comment": "", "result": False}
+    if isinstance(client, int):
+        client = f"{client:03d}"
+    abap_connection = {
+        "mshost": message_server_host,
+        "msserv": str(message_server_port),
+        "sysid": sid,
+        "group": logon_group,
+        "client": client,
+        "user": username,
+        "passwd": password,
+        "lang": "EN",
+    }
+    with Connection(**abap_connection) as conn:
+        log.debug("Retrieving list of implemented SAP Notes")
+        function_modules = {"SCWB_API_GET_NOTES_IMPLEMENTED": {}}
+        success, result = __salt__["sap_nwabap.call_fms"](
+            function_modules=function_modules, conn=conn
+        )
+        if not success:
+            msg = f"Could not retrieve list of SAP Notes from {sid}"
+            log.error(msg)
+            ret["comment"] = msg
+            ret["result"] = False
+            return ret
+        found = False
+        for snote_list in result["SCWB_API_GET_NOTES_IMPLEMENTED"]["ET_NOTES_IMPL"]:
+            if name in snote_list["NUMM"]:
+                found = True
+                break
+        if found:
+            ret["result"] = True
+            ret["changes"] = {}
+            ret["comment"] = "No changes required"
+            return ret
+
+        log.debug(f"Deimplementing SAP Note {name}")
+        if __opts__["test"]:
+            ret["changes"]["new"].append(f"Would have deimplemented SAP Note {name}")
+        else:
+            function_modules = {"SCWB_API_NOTES_DEIMPLEMENT": {"IT_NOTES": [name]}}
+            success, result = __salt__["sap_nwabap.call_fms"](
+                function_modules=function_modules, conn=conn
+            )
+            if not success:
+                msg = f"Could not deimplement SAP Note {name}"
+                log.error(msg)
+                ret["comment"] = msg
+                ret["result"] = False
+                return ret
+            ret["comment"] = f"Deimplemented SAP Note {name}"
+            ret["changes"]["old"] = name
+    ret["result"] = True if (not __opts__["test"] or not ret["changes"]) else None
+    return ret

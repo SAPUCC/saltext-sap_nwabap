@@ -9,11 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- 
+- Add state function `sap_nwabap.note_uploaded`
+- Add state function `sap_nwabap.note_downloaded`
+- Add state function `sap_nwabap.note_implemented`
+- Add state function `sap_nwabap.note_deimplemented`
 
 ### Fixed
 
-- 
+-
 
 ### Changed
 
